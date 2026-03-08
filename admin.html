@@ -1,0 +1,2793 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - PRIME-X OFFICIAL</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDqalpcfDPe27RnWplS_M5yN1jzlLxT7-s",
+            authDomain: "shanto-74050.firebaseapp.com",
+            projectId: "shanto-74050",
+            storageBucket: "shanto-74050.firebasestorage.app",
+            messagingSenderId: "538309641906",
+            appId: "1:538309641906:web:df5c2b382b16e5479bebab",
+            measurementId: "G-JWHWQ5C706",
+            databaseURL: "https://shanto-74050-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Import and initialize Realtime Database
+        import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        const database = getDatabase(app);
+
+        // Export for use in other scripts
+        window.firebaseAuth = auth;
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebasePush = push;
+        window.firebaseRemove = remove;
+        window.firebaseUpdate = update;
+        window.firebaseOnValue = onValue;
+
+        // ADMIN CONFIGURATION - শুধুমাত্র এই ইমেইল দিয়ে লগইন করা যাবে
+        const ADMIN_EMAIL = "asshanto115@gmail.com"; // এখানে আপনার এডমিন ইমেইল দিন
+
+        // Check authentication status
+        const adminContainer = document.getElementById('admin-container');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Monitor auth state
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                // Authorized admin user
+                adminContainer.style.display = 'block';
+            } else {
+                // Not authorized or not logged in - redirect to home
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Handle logout
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            });
+        }
+
+        // Global showAlert function
+        window.showAlert = function (message, type = 'success') {
+            const alertEl = document.getElementById('alert');
+            if (!alertEl) return;
+            alertEl.textContent = message;
+            alertEl.style.display = 'block';
+            alertEl.className = 'alert show alert-' + (type === 'error' ? 'error' : 'success');
+            setTimeout(() => {
+                alertEl.style.display = 'none';
+                alertEl.className = 'alert';
+            }, 5000);
+        };
+    </script>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-glow: rgba(14, 165, 233, 0.4);
+            --secondary: #6366f1;
+            --accent: #a855f7;
+            --bg-dark: #020617;
+            --card-bg: rgba(15, 23, 42, 0.45);
+            --sidebar-bg: rgba(2, 6, 23, 0.9);
+            --text-main: #f8fafc;
+            --text-dim: #64748b;
+            --border: rgba(148, 163, 184, 0.1);
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.1) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #admin-particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: transparent;
+        }
+
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            padding: 0 10px;
+        }
+
+        .sidebar-brand i {
+            font-size: 28px;
+            color: var(--primary);
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+        }
+
+        .sidebar-brand span {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(14, 165, 233, 0.2);
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-link i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link:hover i {
+            color: var(--primary);
+            filter: drop-shadow(0 0 5px var(--primary-glow));
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--primary);
+            padding-left: 13px;
+            /* account for border */
+            box-shadow: inset 0 0 20px rgba(14, 165, 233, 0.05);
+        }
+
+        .nav-link.active i {
+            color: var(--primary);
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+            width: calc(100% - 280px);
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 30px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .page-title p {
+            color: var(--text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        /* --- Components --- */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+        }
+
+        .card:hover {
+            border-color: rgba(14, 165, 233, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(14, 165, 233, 0.05);
+        }
+
+        .section h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #fff;
+        }
+
+        .section h2 i {
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+            background: rgba(15, 23, 42, 1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            border: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes pulse-neon {
+            0% {
+                box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(14, 165, 233, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+            }
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            filter: brightness(1.2);
+            animation: pulse-neon 1.5s infinite;
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s ease;
+            border-radius: inherit;
+        }
+
+        .btn-primary:hover::after {
+            opacity: 1;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .btn-info {
+            background: #6366f1;
+            color: #fff;
+        }
+
+        /* Lists and Grids */
+        .key-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .key-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .key-card:hover {
+            border-color: var(--primary);
+            background: rgba(30, 41, 59, 0.6);
+        }
+
+        /* --- Mobile Responsive Optimizations --- */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.6);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+                width: 100%;
+            }
+
+            .mobile-nav-toggle {
+                display: flex !important;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                z-index: 90;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column-reverse;
+                align-items: center;
+                gap: 20px;
+                padding: 20px 0;
+                text-align: center;
+            }
+
+            .page-title h1 {
+                font-size: 26px;
+                margin-bottom: 8px;
+            }
+
+            .user-profile {
+                width: 100%;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.03);
+                padding: 15px;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .card {
+                padding: 24px 18px;
+                border-radius: 20px;
+                margin-bottom: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stat-card {
+                padding: 20px;
+                border-radius: 18px;
+            }
+
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+
+            .stat-info .stat-value {
+                font-size: 22px;
+            }
+
+            .btn {
+                padding: 14px;
+                border-radius: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-title h1 {
+                font-size: 22px;
+            }
+
+            .key-list-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Stats Widgets --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid:not(.mobile-forced) {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            right: 25px;
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            z-index: 200;
+            box-shadow: 0 12px 30px rgba(14, 165, 233, 0.4);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .mobile-nav-toggle:hover {
+            transform: scale(1.05) translateY(-2px);
+        }
+
+        .mobile-nav-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+            transition: 0.6s;
+        }
+
+        .stat-card:hover::after {
+            left: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-7px) scale(1.02);
+            border-color: rgba(14, 165, 233, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 25px rgba(14, 165, 233, 0.08);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .stat-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: rgba(14, 165, 233, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.1);
+            flex-shrink: 0;
+        }
+
+        .stat-info .stat-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-info .stat-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* --- Animations --- */
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .content-section {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        /* Badge Styles */
+        @keyframes pulse-text {
+            0% {
+                transform: scale(1);
+                color: #fff;
+            }
+
+            50% {
+                transform: scale(1.15);
+                color: var(--primary);
+                text-shadow: 0 0 10px var(--primary-glow);
+            }
+
+            100% {
+                transform: scale(1);
+                color: #fff;
+            }
+        }
+
+        .pulse-text {
+            animation: pulse-text 0.6s ease;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-online {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .status-online::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px #4ade80;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+        }
+
+        .user-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .user-email {
+            font-weight: 600;
+            color: #6bb0ff;
+            font-size: 16px;
+        }
+
+        .user-status {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .user-status.active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .user-status.banned {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .user-status.expired {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .user-actions .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .emote-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .user-actions {
+                flex-direction: column;
+            }
+
+            .user-actions .btn {
+                width: 100%;
+            }
+        }
+
+        /* --- New Admin Login Modal Styles --- */
+    </style>
+</head>
+
+<body>
+    <div id="admin-particles-js"></div>
+
+    <div class="admin-layout" id="admin-container" style="display: none;">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <button class="mobile-nav-toggle" id="mobile-nav-toggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="admin-sidebar">
+            <div class="sidebar-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>PRIME-X CORE</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-link active" onclick="showSection('key-management')">
+                    <i class="fas fa-key"></i> Key Management
+                </button>
+                <button class="nav-link" onclick="showSection('emote-management')">
+                    <i class="fas fa-smile"></i> Emote Control
+                </button>
+                <button class="nav-link" onclick="showSection('announcement')">
+                    <i class="fas fa-bullhorn"></i> Announcements
+                </button>
+                <button class="nav-link" onclick="showSection('social-links')">
+                    <i class="fas fa-link"></i> Social Links
+                </button>
+                <button class="nav-link" onclick="showSection('header-settings')">
+                    <i class="fas fa-heading"></i> Site Header
+                </button>
+                <button class="nav-link" onclick="showSection('notifications')">
+                    <i class="fas fa-bell"></i> Notifications
+                </button>
+                <button class="nav-link" onclick="showSection('category-management')">
+                    <i class="fas fa-folder"></i> Categories
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="nav-link" style="color: #f87171;">
+                    <i class="fas fa-sign-out-alt"></i> Logout System
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="page-title">
+                    <h1 id="current-section-title">Systems Intelligence</h1>
+                    <p id="current-section-desc">Unified control center for PRIME-X core assets</p>
+                </div>
+                <div class="user-profile" style="display: flex; align-items: center; gap: 15px;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; font-weight: 600; color: #fff;">ADMIN_SHANTO</div>
+                        <div class="status-badge status-online">SECURE SESSION</div>
+                    </div>
+                    <div
+                        style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); border: 2px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #fff;">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Overview Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-server"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value">ONLINE</div>
+                        <div class="stat-label">System Status</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #fbd38d;"><i class="fas fa-key"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-total-keys">...</div>
+                        <div class="stat-label">Total Licenses</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #c084fc;"><i class="fas fa-bolt"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-active-sessions">324</div>
+                        <div class="stat-label">Active Agents</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: #f472b6;"><i class="fas fa-fire"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-total-emotes">...</div>
+                        <div class="stat-label">Loaded Assets</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- Key Management Section (Default) -->
+            <div class="section card content-section" id="key-management-section">
+                <div class="section-header"
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h2 style="margin-bottom: 0;"><i class="fas fa-key"></i> ইউজার কী ম্যানেজমেন্ট</h2>
+                    <span class="badge"
+                        style="background: rgba(56, 189, 248, 0.1); color: var(--primary); padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid rgba(56, 189, 248, 0.2);">
+                        System Active
+                    </span>
+                </div>
+
+                <!-- Create Key Form Container -->
+                <div class="card"
+                    style="background: rgba(56, 189, 248, 0.03); border: 1px dashed rgba(56, 189, 248, 0.3); margin-bottom: 40px;">
+                    <h3
+                        style="color: #fff; font-size: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-plus-circle" style="color: var(--primary);"></i> নতুন Key তৈরি করুন
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+
+                        <div class="form-group">
+                            <label>ইউজারের ইমেইল (ঐচ্ছিক)</label>
+                            <input type="email" class="form-control" id="key-user-email" placeholder="user@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Plan টাইপ</label>
+                            <select id="key-plan" class="form-control">
+                                <option value="Free">Free Plan</option>
+                                <option value="Pro">Pro Plan</option>
+                                <option value="Elite">Elite Plan</option>
+                                <option value="Lifetime">Lifetime Plan</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Device ID (Fingerprint)</label>
+                            <input type="text" class="form-control" id="key-hwid"
+                                placeholder="ফাঁকা রাখুন (প্রথম লগইনে অটো-লক হবে)">
+                        </div>
+                        <div class="form-group">
+                            <label>মেয়াদ (Duration)</label>
+                            <select id="key-expiry-duration" class="form-control"
+                                onchange="toggleCustomDate(this.value)">
+                                <option value="0">Lifetime (No Expiry)</option>
+                                <option value="1h">1 Hour (Trial)</option>
+                                <option value="24h">24 Hours (1 Day)</option>
+                                <option value="3d">3 Days</option>
+                                <option value="7d">7 Days (1 Week)</option>
+                                <option value="30d">30 Days (1 Month)</option>
+                                <option value="custom">Custom Date Selection</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="custom-date-container" style="display: none;">
+                            <label>শেষ তারিখ</label>
+                            <input type="date" class="form-control" id="key-custom-date">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>জেনারেটেড Key</label>
+                        <div style="display: flex; gap: 12px;">
+                            <input type="text" class="form-control" id="generated-key-display"
+                                placeholder="PRIME-XXXX-XXXX-XXXX"
+                                style="font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: 1px; flex: 1; text-align: center; border-color: rgba(56, 189, 248, 0.4);">
+                            <button class="btn btn-info" onclick="generateRandomKey()" style="padding: 0 20px;">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-top: 25px;">
+                        <button class="btn btn-primary" id="save-key-btn" onclick="saveNewKey()" style="flex: 2;">
+                            <i class="fas fa-save"></i> Key সেভ করুন
+                        </button>
+                        <button class="btn btn-danger" id="cancel-edit-btn" onclick="cancelEdit()"
+                            style="flex: 1; display: none;">
+                            <i class="fas fa-times"></i> বাতিল
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-header"
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+                    <h3 style="margin-bottom: 0;"><i class="fas fa-list-ul"></i> একটিভ কী ড্যাশবোর্ড</h3>
+                    <div class="search-box-wrapper" style="position: relative; width: 100%; max-width: 300px;">
+                        <i class="fas fa-search"
+                            style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 14px;"></i>
+                        <input type="text" id="dashboard-search-input" placeholder="ইমেইল বা কী দিয়ে সার্চ করুন..."
+                            oninput="filterDashboardKeys()"
+                            style="width: 100%; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 12px; padding: 10px 15px 10px 40px; color: #fff; font-size: 13px; outline: none; transition: 0.3s; border-color: rgba(56, 189, 248, 0.2);">
+                    </div>
+                </div>
+                <div id="key-list-container" class="key-list-grid">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 60px;">
+                        <i class="fas fa-circle-notch fa-spin"
+                            style="font-size: 32px; color: var(--primary); margin-bottom: 15px;"></i>
+                        <p style="color: var(--text-dim);">Firebase থেকে ডাটা লোড হচ্ছে...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social Links Section -->
+            <div class="section card content-section" id="social-links-section" style="display: none;">
+                <h2><i class="fas fa-link"></i> সোশ্যাল লিংক ম্যানেজমেন্ট</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="form-group">
+                        <label>YouTube লিংক</label>
+                        <input type="url" class="form-control" id="youtube-link" placeholder="https://youtube.com/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Discord লিংক</label>
+                        <input type="url" class="form-control" id="discord-link" placeholder="https://discord.gg/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Telegram লিংক</label>
+                        <input type="url" class="form-control" id="telegram-link" placeholder="https://t.me/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Website লিংক (Shop)</label>
+                        <input type="url" class="form-control" id="website-link" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp লিংক</label>
+                        <input type="url" class="form-control" id="whatsapp-link" placeholder="https://wa.link/...">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSocialLinks()" style="margin-top: 20px;">
+                    <i class="fas fa-save"></i> সোশ্যাল লিংক সেভ করুন
+                </button>
+            </div>
+
+            <!-- Header Settings Section -->
+            <div class="section card content-section" id="header-settings-section" style="display: none;">
+                <h2><i class="fas fa-heading"></i> হেডার সেটিংস</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="form-group">
+                        <label>লোগো ইমেজ URL</label>
+                        <input type="url" class="form-control" id="logo-url" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>ওয়েবসাইট নাম</label>
+                        <input type="text" class="form-control" id="website-name" placeholder="PRIME-X OFFICIAL">
+                    </div>
+                    <div class="form-group">
+                        <label>ওয়েবসাইট সাবটাইটেল</label>
+                        <input type="text" class="form-control" id="website-subtitle" placeholder="SUBTITLE">
+                    </div>
+                    <div class="form-group">
+                        <label>ডেভেলপার নাম</label>
+                        <input type="text" class="form-control" id="developer-name">
+                    </div>
+                    <div class="form-group">
+                        <label>Scroll Speed (সেকেন্ড)</label>
+                        <input type="number" class="form-control" id="developer-name-speed" min="5" max="60" value="25">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveHeaderSettings()" style="margin-top: 20px;">
+                    <i class="fas fa-save"></i> হেডার সেটিংস সেভ করুন
+                </button>
+            </div>
+
+            <!-- Announcement Section -->
+            <div class="section card content-section" id="announcement-section" style="display: none;">
+                <h2><i class="fas fa-bullhorn"></i> এনাউন্সমেন্ট ম্যানেজমেন্ট</h2>
+                <div class="form-group">
+                    <label>এনাউন্সমেন্ট টেক্সট</label>
+                    <textarea class="form-control" id="announcement-text" style="min-height: 120px;"
+                        placeholder="🎉 স্বাগতম PRIME-X এ! সর্বশেষ আপডেট এবং টুলস পেতে আমাদের সাথে থাকুন। 🎉"></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Scroll Speed (সেকেন্ড)</label>
+                        <input type="number" class="form-control" id="announcement-speed" min="10" max="120" value="30"
+                            step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>টেক্সট কালার ও অ্যানিমেশন</label>
+                        <select id="announcement-text-color" class="form-control">
+                            <option value="#ffffff">⚪ সাদা (White)</option>
+                            <option value="#38bdf8">🔵 স্কাই ব্লু (Sky Blue)</option>
+                            <option value="#ff0000">🔴 লাল (Red)</option>
+                            <option value="#00ff00">🟢 সবুজ (Green)</option>
+                            <option value="#ffff00">🟡 হলুদ (Yellow)</option>
+                            <option value="#f472b6">💗 গোলাপি (Pink)</option>
+                            <option value="rgb-animated">🌈 RGB Animated (Colorful)</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="saveAnnouncement()">
+                    <i class="fas fa-broadcast-tower"></i> এনাউন্সমেন্ট সেভ করুন
+                </button>
+            </div>
+
+            <!-- Bell Notification Section -->
+            <div class="section card content-section" id="notifications-section" style="display: none;">
+                <h2><i class="fas fa-bell"></i> সিস্টেম নোটিফিকেশন</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>টার্গেট ইউজার</label>
+                        <select id="notification-target" class="form-control">
+                            <option value="all">সবাইকে পাঠান (Broadcast)</option>
+                            <option value="specific">নির্দিষ্ট ইউজারকে পাঠান (Direct)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="specific-email-group" style="display: none;">
+                        <label>ইউজার ইমেইল</label>
+                        <input type="email" class="form-control" id="target-user-email" placeholder="user@example.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>নোটিফিকেশন টাইটেল</label>
+                    <input type="text" class="form-control" id="notification-title" placeholder="নতুন আপডেট!">
+                </div>
+                <div class="form-group">
+                    <label>নোটিফিকেশন মেসেজ</label>
+                    <textarea class="form-control" id="notification-message"
+                        placeholder="আপনার নোটিফিকেশন মেসেজ এখানে লিখুন..." style="min-height: 100px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>নোটিফিকেশন টাইপ</label>
+                    <select id="notification-type" class="form-control">
+                        <option value="info">Information (Blue)</option>
+                        <option value="success">Success (Green)</option>
+                        <option value="warning">Warning (Yellow)</option>
+                        <option value="error">Critical Error (Red)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="sendNotification()">
+                    <i class="fas fa-paper-plane"></i> নোটিফিকেশন পাঠান
+                </button>
+
+                <h3 style="margin-top: 40px; margin-bottom: 20px; color: var(--text-dim); font-size: 16px;">
+                    <i class="fas fa-history"></i> পূর্ববর্তী নোটিফিকেশন লগ
+                </h3>
+                <div class="notification-list" id="notification-list">
+                    <!-- Notifications will be listed here -->
+                </div>
+            </div>
+
+            <!-- Emote Management Section -->
+            <div class="section card content-section" id="emote-management-section" style="display: none;">
+                <h2><i class="fas fa-smile-beam"></i> ইমোট লাইব্রেরি মডারেটর</h2>
+
+                <div class="tabs" style="margin-bottom: 30px;">
+                    <button class="tab active" onclick="switchTab('add-emote')">নতুন ইমোট যোগ করুন</button>
+                    <button class="tab" onclick="switchTab('view-all-emotes')">সব ইমোট ব্রাউজ করুন</button>
+                </div>
+
+                <!-- Add Emote Tab -->
+                <div id="add-emote" class="tab-content active">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>ইমোট নাম</label>
+                            <input type="text" class="form-control" id="emote-name" placeholder="উদাহরণ: Cobra Rising">
+                        </div>
+                        <div class="form-group">
+                            <label>ইমোট ID</label>
+                            <input type="text" class="form-control" id="emote-id" placeholder="উদাহরণ: 909000075">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>ইমোট ইমেজ URL</label>
+                        <input type="url" class="form-control" id="emote-image"
+                            placeholder="https://raw.githubusercontent.com/...">
+                    </div>
+                    <div class="form-group">
+                        <label>ট্যাকটিক্যাল ক্যাটাগরি</label>
+                        <select id="emote-category" class="form-control">
+                            <option value="">Default (General)</option>
+                            <option value="EVO">EVO (Legendary)</option>
+                            <option value="Rare Emote">Rare (Limited)</option>
+                            <option value="NOT IN BD SERVER">Exotic (Global Only)</option>
+                            <option value="HYPER B">Vivid (Hyper Book)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="addEmote()" style="width: 100%;">
+                        <i class="fas fa-plus-circle"></i> ইমোট ডেটাবেজে যুক্ত করুন
+                    </button>
+                </div>
+
+                <!-- View All Emotes Tab -->
+                <div id="view-all-emotes" class="tab-content">
+                    <div class="card"
+                        style="background: rgba(15, 23, 42, 0.4); border-color: rgba(56, 189, 248, 0.1); padding: 20px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                            <div class="form-group" style="flex: 1; min-width: 200px;">
+                                <label>ক্যাটাগরি ফিল্টার</label>
+                                <select id="filter-all-category" class="form-control" onchange="filterAllEmotes()">
+                                    <option value="">সব ইমোট দেখান</option>
+                                    <option value="EVO">EVO Status</option>
+                                    <option value="Rare Emote">Rare Status</option>
+                                    <option value="NOT IN BD SERVER">Global Unlock</option>
+                                    <option value="HYPER B">Hyper Book</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 2; min-width: 300px;">
+                                <label>ট্যাকটিক্যাল সার্চ</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-search"
+                                        style="position: absolute; left: 16px; top: 14px; color: var(--primary);"></i>
+                                    <input type="text" class="form-control" id="admin-emote-search"
+                                        style="padding-left: 45px;" placeholder="Search name or ID..."
+                                        oninput="filterAllEmotes()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="admin-emote-list" class="emote-list" style="margin-top: 25px;"></div>
+                </div>
+            </div>
+
+            <!-- Category Management Section -->
+            <div class="section card content-section" id="category-management-section" style="display: none;">
+                <h2><i class="fas fa-folder-open"></i> ক্যাটাগরি কনফিগারেশন</h2>
+                <div class="card"
+                    style="background: rgba(56, 189, 248, 0.03); border: 1px dashed rgba(56, 189, 248, 0.3);">
+                    <div class="form-group">
+                        <label>নতুন ক্যাটাগরি নাম</label>
+                        <div style="display: flex; gap: 12px;">
+                            <input type="text" class="form-control" id="new-category" placeholder="যেমন: Mythic Emotes">
+                            <button class="btn btn-primary" onclick="addCategory()">
+                                <i class="fas fa-plus"></i> যোগ করুন
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 35px; margin-bottom: 20px; color: var(--text-dim); font-size: 16px;">
+                    <i class="fas fa-tags"></i> বর্তমান সকল ক্যাটাগরি
+                </h3>
+                <div id="category-list"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                    <!-- Categories will be listed here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialize data - will be loaded from Firebase
+        let socialLinks = {
+            youtube: 'https://youtube.com/@primexofficial-g4m?si=7Chr0KpuFt0kWdRA',
+            discord: 'https://discord.gg/FCUztBgvCJ',
+            telegram: 'https://t.me/+3RV4xVB8aQYwZTc9',
+            website: 'https://prime-x-official.netlify.app/',
+            whatsapp: 'https://wa.link/kzfxli'
+        };
+
+        let headerSettings = {
+            logo: 'https://i.ibb.co/zWCYFszJ/Np-logo-abstrac.jpg',
+            name: 'PRIME-X OFFICIAL',
+            subtitle: 'PRIME-X OFFICIAL WEBSITE'
+        };
+
+        let announcement = '🎉 স্বাগতম PRIME-X OFFICIAL এ! সর্বশেষ আপডেট এবং টুলস পেতে আমাদের সাথে থাকুন। জয়েন করুন ডিসকর্ড, টেলিগ্রাম এবং ইউটিউব চ্যানেলে! 🎉';
+
+        const fallbackIndexEmotes = [{ "name": "Cobra Rising", "id": "909000075", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000075.png" }, { "name": "Ak Max", "id": "909000063", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000063.png" }, { "name": "Shotgun Max", "id": "909035007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035007.png" }, { "name": "Scar Max", "id": "909000068", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000068.png" }, { "name": "XM8 Max", "id": "909000085", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000085.png" }, { "name": "G18 Max", "id": "909038012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038012.png" }, { "name": "AN94 Max", "id": "909035012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035012.png" }, { "name": "MP5 Max", "id": "909033002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033002.png" }, { "name": "N60 Max", "id": "909051003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051003.png" }, { "name": "Fist Max", "id": "909037011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037011.png" }, { "name": "M10 Max", "id": "909000081", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000081.png" }, { "name": "Famasa Max", "id": "909000090", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000090.png" }, { "name": "P90 Max", "id": "909049010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049010.png" }, { "name": "Thompson Max", "id": "909038010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038010.png" }, { "name": "M4A1 Max", "id": "909033001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033001.png" }, { "name": "UMP Max", "id": "909000098", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000098.png" }, { "name": "New M40 Max", "id": "909040010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040010.png" }, { "name": "Parafal Max", "id": "909045001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045001.png" }, { "name": "WD Picker Max", "id": "909042008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042008.png" }, { "name": "Open Fire", "id": "909049012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049012.png" }, { "name": "\"100\" Gloo Sculpture", "id": "909042007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042007.png" }, { "name": "LOL", "id": "909000002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000002.png" }, { "name": "Provoke", "id": "909000003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000003.png" }, { "name": "Flowers of Love", "id": "909000010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000010.png" }, { "name": "FFWC Throne", "id": "909000014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000014.png" }, { "name": "Selfie", "id": "909000032", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000032.png" }, { "name": "Pirate's Flag", "id": "909000034", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000034.png" }, { "name": "Top DJ", "id": "909000036", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000036.png" }, { "name": "Power of money", "id": "909000038", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000038.png" }, { "name": "Eat my dust", "id": "909000039", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000039.png" }, { "name": "Kongfu", "id": "909000041", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000041.png" }, { "name": "I heart you", "id": "909000045", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000045.png" }, { "name": "Tea Time", "id": "909000046", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000046.png" }, { "name": "Doggie", "id": "909000052", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000052.png" }, { "name": "I'm Rich!", "id": "909000055", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000055.png" }, { "name": "Make It Rain", "id": "909000056", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000056.png" }, { "name": "Dust Off", "id": "909000057", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000057.png" }, { "name": "Captain Booyah", "id": "909000058", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000058.png" }, { "name": "BOOYAH!", "id": "909000060", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000060.png" }, { "name": "Bhangra", "id": "909000061", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000061.png" }, { "name": "Piece of Cake", "id": "909000062", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000062.png" }, { "name": "I'm Saitama!", "id": "909000064", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000064.png" }, { "name": "The Victor", "id": "909000065", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000065.png" }, { "name": "Sii!", "id": "909000066", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000066.png" }, { "name": "Obliteration", "id": "909000067", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000067.png" }, { "name": "Top Scorer", "id": "909000069", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000069.png" }, { "name": "Triple Kicks", "id": "909000070", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000070.png" }, { "name": "Cobra Dance", "id": "909000071", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000071.png" }, { "name": "Predator Pulse", "id": "909000072", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000072.png" }, { "name": "Ground Punch", "id": "909000073", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000073.png" }, { "name": "The Biker", "id": "909000074", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000074.png" }, { "name": "One-Finger Pushup", "id": "909000076", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000076.png" }, { "name": "Stage Time", "id": "909000077", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000077.png" }, { "name": "Booyah! Balloon", "id": "909000078", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000078.png" }, { "name": "More Practice", "id": "909000079", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000079.png" }, { "name": "FFWS 2021", "id": "909000080", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000080.png" }, { "name": "Mythos Four", "id": "909000086", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000086.png" }, { "name": "Champion Grab", "id": "909000087", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000087.png" }, { "name": "Win and Chill", "id": "909000088", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000088.png" }, { "name": "Hadouken", "id": "909000089", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000089.png" }, { "name": "Big Smash", "id": "909000091", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000091.png" }, { "name": "All In Control", "id": "909000093", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000093.png" }, { "name": "Debugging", "id": "909000094", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000094.png" }, { "name": "Waggor Wave", "id": "909000095", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000095.png" }, { "name": "Crazy Guitar", "id": "909000096", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000096.png" }, { "name": "Dribble King", "id": "909000121", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000121.png" }, { "name": "Name Not Found", "id": "909000122", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000122.png" }, { "name": "Mind it!", "id": "909000123", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000123.png" }, { "name": "Golden Combo", "id": "909000124", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000124.png" }, { "name": "Sick Moves", "id": "909000125", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000125.png" }, { "name": "Ruler's Flag", "id": "909000128", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000128.png" }, { "name": "Money Throw", "id": "909000129", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000129.png" }, { "name": "Endless Bullets", "id": "909000130", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000130.png" }, { "name": "Fire Slam", "id": "909000133", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000133.png" }, { "name": "Heartbroken", "id": "909000134", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000134.png" }, { "name": "Rock Paper Scissors", "id": "909000135", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000135.png" }, { "name": "Shattered Reality", "id": "909000136", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000136.png" }, { "name": "Halo of Music", "id": "909000137", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000137.png" }, { "name": "Burnt BBQ", "id": "909000138", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000138.png" }, { "name": "Switching Steps", "id": "909000139", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000139.png" }, { "name": "Creed Slay", "id": "909000140", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000140.png" }, { "name": "Leap of Fail", "id": "909000141", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000141.png" }, { "name": "Name Not Found", "id": "909000142", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000142.png" }, { "name": "Helicopter Shot", "id": "909000143", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000143.png" }, { "name": "Kungfu Tigers", "id": "909000144", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000144.png" }, { "name": "Possessed Warrior", "id": "909000145", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909000145.png" }, { "name": "Drop Kick", "id": "909033004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033004.png" }, { "name": "Sit Down!", "id": "909033005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033005.png" }, { "name": "BOOYAH Sparks", "id": "909033006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033006.png" }, { "name": "The FFWS Dance", "id": "909033007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033007.png" }, { "name": "Easy Peasy", "id": "909033008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033008.png" }, { "name": "Winner Throw", "id": "909033009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033009.png" }, { "name": "Weight of Victory", "id": "909033010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909033010.png" }, { "name": "Chronicle of the Sword", "id": "909034001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034001.png" }, { "name": "The Collapse", "id": "909034002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034002.png" }, { "name": "Flaming Groove", "id": "909034003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034003.png" }, { "name": "Energetic", "id": "909034004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034004.png" }, { "name": "Ridicule", "id": "909034005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034005.png" }, { "name": "Tease Waggor", "id": "909034006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034006.png" }, { "name": "Great Conductor", "id": "909034007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034007.png" }, { "name": "Fake Death", "id": "909034008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034008.png" }, { "name": "Twerk", "id": "909034009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034009.png" }, { "name": "BR-Ranked Heroic Emote", "id": "909034010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034010.png" }, { "name": "BR-Ranked Master Emote", "id": "909034011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034011.png" }, { "name": "CS-Ranked Heroic Emote", "id": "909034012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034012.png" }, { "name": "CS-Ranked Master Emote", "id": "909034013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034013.png" }, { "name": "Yes, I do", "id": "909034014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909034014.png" }, { "name": "Free Money!", "id": "909035001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035001.png" }, { "name": "Victorious Eagle", "id": "909035005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035005.png" }, { "name": "Flying Saucer", "id": "909035006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035006.png" }, { "name": "Bobble Dance", "id": "909035008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035008.png" }, { "name": "Weight Training", "id": "909035009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035009.png" }, { "name": "Beautiful Love", "id": "909035010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035010.png" }, { "name": "Groove Moves", "id": "909035011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035011.png" }, { "name": "Louder Please", "id": "909035013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035013.png" }, { "name": "Ninja Stand", "id": "909035014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035014.png" }, { "name": "Creator In Action", "id": "909035015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909035015.png" }, { "name": "Ghost Float", "id": "909036001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036001.png" }, { "name": "Shiba Surf", "id": "909036002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036002.png" }, { "name": "Waiter Walk", "id": "909036003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036003.png" }, { "name": "Graffiti Cameraman", "id": "909036004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036004.png" }, { "name": "Agile Boxer", "id": "909036005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036005.png" }, { "name": "Sunbathing", "id": "909036006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036006.png" }, { "name": "Skateboard Swag", "id": "909036008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036008.png" }, { "name": "Phantom Tamer", "id": "909036009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036009.png" }, { "name": "The Signal", "id": "909036010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036010.png" }, { "name": "Eternal Descent", "id": "909036011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036011.png" }, { "name": "Swaggy Dance", "id": "909036012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036012.png" }, { "name": "Admire", "id": "909036014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909036014.png" }, { "name": "Reindeer Float", "id": "909037001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037001.png" }, { "name": "Bamboo Dance", "id": "909037002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037002.png" }, { "name": "Dance of Constellation", "id": "909037003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037003.png" }, { "name": "Trophy Grab", "id": "909037004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037004.png" }, { "name": "Starry Hands", "id": "909037005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037005.png" }, { "name": "Yum", "id": "909037006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037006.png" }, { "name": "Happy Dancing", "id": "909037007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037007.png" }, { "name": "Juggle", "id": "909037008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037008.png" }, { "name": "Neon Sign", "id": "909037009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037009.png" }, { "name": "Beast Tease", "id": "909037010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037010.png" }, { "name": "Clap Dance", "id": "909037012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909037012.png" }, { "name": "The Influencer", "id": "909038001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038001.png" }, { "name": "Name Not Found", "id": "909038002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038002.png" }, { "name": "Techno Blast", "id": "909038003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038003.png" }, { "name": "Be My Valentine", "id": "909038004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038004.png" }, { "name": "Angry Walk", "id": "909038005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038005.png" }, { "name": "Make Some Noise", "id": "909038006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038006.png" }, { "name": "Croco Hooray", "id": "909038008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038008.png" }, { "name": "Scorpio Spin", "id": "909038009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038009.png" }, { "name": "Shall We Dance?", "id": "909038011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038011.png" }, { "name": "Spin Master", "id": "909038013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909038013.png" }, { "name": "Festival Celebration", "id": "909039001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039001.png" }, { "name": "Artistic Musical Dance", "id": "909039002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039002.png" }, { "name": "Forward, Backward", "id": "909039003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039003.png" }, { "name": "Scorpion Friend", "id": "909039004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039004.png" }, { "name": "Aching Power", "id": "909039005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039005.png" }, { "name": "Earthly Force", "id": "909039006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039006.png" }, { "name": "Grenade Magic", "id": "909039007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039007.png" }, { "name": "Oh Yeah!", "id": "909039008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039008.png" }, { "name": "Grace On Wheels", "id": "909039009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039009.png" }, { "name": "Flex", "id": "909039010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039010.png" }, { "name": "Crimson Doom", "id": "909039011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039011.png" }, { "name": "Fire Beast Tamer", "id": "909039012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039012.png" }, { "name": "Crimson Tunes", "id": "909039013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039013.png" }, { "name": "Swaggy V-Steps", "id": "909039014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909039014.png" }, { "name": "The Chromatic Finish", "id": "909040001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040001.png" }, { "name": "Smash the Feather", "id": "909040002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040002.png" }, { "name": "Sonorous Steps", "id": "909040003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040003.png" }, { "name": "Fishing for Wisdom", "id": "909040004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040004.png" }, { "name": "Chromatic Pop Dance", "id": "909040005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040005.png" }, { "name": "Chroma Twist Twist", "id": "909040006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040006.png" }, { "name": "Birth of Justice", "id": "909040008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040008.png" }, { "name": "Spider-Sense", "id": "909040009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040009.png" }, { "name": "Play With Thunderbolt", "id": "909040011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040011.png" }, { "name": "6th Anniversary Celebration", "id": "909040012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040012.png" }, { "name": "Wisdom Swing", "id": "909040013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040013.png" }, { "name": "Helicopter Shot", "id": "909040014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909040014.png" }, { "name": "Thunder Breathing First Form: Thunder Flash", "id": "909041001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041001.png" }, { "name": "Water Breathing Sixth Form: Whirlpool", "id": "909041002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041002.png" }, { "name": "Beast Breathing Fifth Fang: Crazy Cutting", "id": "909041003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041003.png" }, { "name": "Flying Ink Sword", "id": "909041004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041004.png" }, { "name": "Diz My Popblaster", "id": "909041005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041005.png" }, { "name": "Dance Puppet, Dance!", "id": "909041006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041006.png" }, { "name": "High Knees", "id": "909041007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041007.png" }, { "name": "Bony Fumes", "id": "909041008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041008.png" }, { "name": "Feel the Electricity", "id": "909041009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041009.png" }, { "name": "Whac-A-Cotton", "id": "909041010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041010.png" }, { "name": "Honorable Mention Emote", "id": "909041011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041011.png" }, { "name": "BR-Ranked Grandmaster Emote", "id": "909041012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041012.png" }, { "name": "CS-Ranked Grandmaster Emote", "id": "909041013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041013.png" }, { "name": "Monster Clubbing", "id": "909041014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041014.png" }, { "name": "Basudara Dance", "id": "909041015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909041015.png" }, { "name": "Stir-Fry Frostfire", "id": "909042001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042001.png" }, { "name": "Money Rain", "id": "909042002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042002.png" }, { "name": "Frostfire's Calling", "id": "909042003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042003.png" }, { "name": "Stomping Foot", "id": "909042004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042004.png" }, { "name": "This Way", "id": "909042005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042005.png" }, { "name": "Excellent Service", "id": "909042006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042006.png" }, { "name": "Celebration Schuss", "id": "909042009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042009.png" }, { "name": "Dawn Voyage Emote", "id": "909042011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042011.png" }, { "name": "Lamborghini Ride", "id": "909042012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042012.png" }, { "name": "Hello! Frostfire Style", "id": "909042013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042013.png" }, { "name": "Hand Grooves", "id": "909042016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042016.png" }, { "name": "Free Fire Toiletman", "id": "909042017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042017.png" }, { "name": "Kemusan", "id": "909042018", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909042018.png" }, { "name": "Ribbit Rider", "id": "909043001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043001.png" }, { "name": "Inner Self Mastery", "id": "909043002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043002.png" }, { "name": "Emperor's Treasure Machine", "id": "909043003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043003.png" }, { "name": "Why So Chaos?", "id": "909043004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043004.png" }, { "name": "Huge Feast", "id": "909043005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043005.png" }, { "name": "Color Burst", "id": "909043006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043006.png" }, { "name": "Dragon Swipe", "id": "909043007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043007.png" }, { "name": "Samba", "id": "909043008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043008.png" }, { "name": "Speed Summon", "id": "909043009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043009.png" }, { "name": "What a Match", "id": "909043010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043010.png" }, { "name": "What a Pair", "id": "909043013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909043013.png" }, { "name": "Byte Mounting", "id": "909044001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044001.png" }, { "name": "The Unicyclist", "id": "909044002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044002.png" }, { "name": "Basket Rafting", "id": "909044003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044003.png" }, { "name": "Happy Lamb Shouldering", "id": "909044004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044004.png" }, { "name": "Paradox of Enlightenment", "id": "909044005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044005.png" }, { "name": "Harmonious Paradox", "id": "909044006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044006.png" }, { "name": "Raise Your Thumb!", "id": "909044007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044007.png" }, { "name": "The Final Paradox", "id": "909044015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044015.png" }, { "name": "Honk Up!", "id": "909044016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909044016.png" }, { "name": "Spring Rocker", "id": "909045002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045002.png" }, { "name": "Giddy Up!", "id": "909045003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045003.png" }, { "name": "The Goosy Dance", "id": "909045004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045004.png" }, { "name": "Captain Victor", "id": "909045005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045005.png" }, { "name": "A Flower Salute", "id": "909045010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045010.png" }, { "name": "Little Foxy Run", "id": "909045011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045011.png" }, { "name": "Mr. Waggor's Seesaw", "id": "909045012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045012.png" }, { "name": "Floating Meditation", "id": "909045015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045015.png" }, { "name": "Naatu Naatu", "id": "909045016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045016.png" }, { "name": "Champion's Walk", "id": "909045017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909045017.png" }, { "name": "Aura Boarder", "id": "909046001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046001.png" }, { "name": "Who's the Booyah Champ!", "id": "909046002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046002.png" }, { "name": "Controlled Combustion", "id": "909046003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046003.png" }, { "name": "Cheers to Victory!", "id": "909046004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046004.png" }, { "name": "Shoe Shining", "id": "909046005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046005.png" }, { "name": "Gunspinning", "id": "909046006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046006.png" }, { "name": "Crowd Pleaser", "id": "909046007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046007.png" }, { "name": "No Sweat", "id": "909046008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046008.png" }, { "name": "Magma Quake", "id": "909046009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046009.png" }, { "name": "Max Firepower", "id": "909046010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046010.png" }, { "name": "Can't Touch This", "id": "909046011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046011.png" }, { "name": "Firestarter", "id": "909046012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046012.png" }, { "name": "FFWS Flag Flair", "id": "909046013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046013.png" }, { "name": "Beat Drop", "id": "909046014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046014.png" }, { "name": "Isagi's Spatial Awareness", "id": "909046015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046015.png" }, { "name": "Nagi's Trapping", "id": "909046016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046016.png" }, { "name": "Soaring Up", "id": "909046017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909046017.png" }, { "name": "I Won't Bow Down", "id": "909047001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047001.png" }, { "name": "Aurora Iridescence", "id": "909047002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047002.png" }, { "name": "Couch For Two", "id": "909047003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047003.png" }, { "name": "Flutter Dash", "id": "909047004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047004.png" }, { "name": "Slippery Throne", "id": "909047005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047005.png" }, { "name": "Acceptance Speech", "id": "909047006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047006.png" }, { "name": "Love Me, Love Me Not", "id": "909047007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047007.png" }, { "name": "Scissor Savvy", "id": "909047008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047008.png" }, { "name": "The Thinker", "id": "909047009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047009.png" }, { "name": "JKT48 No.1", "id": "909047012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047012.png" }, { "name": "Rasengan", "id": "909047015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047015.png" }, { "name": "Clone Jutsu", "id": "909047019", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909047019.png" }, { "name": "To the Rescue", "id": "909048001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048001.png" }, { "name": "Midnight Peruse", "id": "909048002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048002.png" }, { "name": "Guitar Groove", "id": "909048003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048003.png" }, { "name": "Keyboard Player", "id": "909048004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048004.png" }, { "name": "On Drums", "id": "909048005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048005.png" }, { "name": "Chac-Chac", "id": "909048006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048006.png" }, { "name": "Pillow Fight", "id": "909048007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048007.png" }, { "name": "Goofy Camel", "id": "909048009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048009.png" }, { "name": "Hit a Six!", "id": "909048010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048010.png" }, { "name": "Flag Summon", "id": "909048011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048011.png" }, { "name": "Slurp slurp!", "id": "909048014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048014.png" }, { "name": "Sketching", "id": "909048015", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048015.png" }, { "name": "Half-Time Chilling", "id": "909048016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048016.png" }, { "name": "Throw-In", "id": "909048017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909048017.png" }, { "name": "Nailoong Time!", "id": "909049001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049001.png" }, { "name": "Hand Raise", "id": "909049002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049002.png" }, { "name": "Kick It Up", "id": "909049003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049003.png" }, { "name": "Creation Days", "id": "909049006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049006.png" }, { "name": "Raining Coins", "id": "909049007", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049007.png" }, { "name": "Clap Clap Hooray", "id": "909049008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049008.png" }, { "name": "Infinite Loops", "id": "909049009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049009.png" }, { "name": "Boxing Machine", "id": "909049011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049011.png" }, { "name": "Comic Barf", "id": "909049013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049013.png" }, { "name": "Spear Spin", "id": "909049016", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049016.png" }, { "name": "Flag Wave", "id": "909049017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049017.png" }, { "name": "Disco Dazzle", "id": "909049018", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909049018.png" }, { "name": "Reanimation Jutsu", "id": "909050002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050002.png" }, { "name": "The Final Battle", "id": "909050003", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050003.png" }, { "name": "Fire Style: Fireball Jutsu", "id": "909050005", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050005.png" }, { "name": "Flying Raijin Jutsu", "id": "909050006", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050006.png" }, { "name": "Hammer Slam", "id": "909050008", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050008.png" }, { "name": "The Rings", "id": "909050009", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050009.png" }, { "name": "Drum Twirl", "id": "909050010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050010.png" }, { "name": "Bunny Action", "id": "909050011", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050011.png" }, { "name": "Broom Swoosh", "id": "909050012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050012.png" }, { "name": "Blade from Heart", "id": "909050013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050013.png" }, { "name": "Bunny Wiggle", "id": "909050017", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050017.png" }, { "name": "Flaming Heart", "id": "909050018", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050018.png" }, { "name": "Rain or Shine", "id": "909050019", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050019.png" }, { "name": "Sholay", "id": "909050020", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050020.png" }, { "name": "Peak Points", "id": "909050021", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050021.png" }, { "name": "Boat Race Aura", "id": "909050027", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050027.png" }, { "name": "Boat Race Rowing", "id": "909050028", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909050028.png" }, { "name": "Prismatic Flight", "id": "909051001", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051001.png" }, { "name": "Name Not Found", "id": "909051002", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051002.png" }, { "name": "Shower Time", "id": "909051004", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051004.png" }, { "name": "On Motorbike", "id": "909051010", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051010.png" }, { "name": "Celestial Shot", "id": "909051012", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051012.png" }, { "name": "Red Petals", "id": "909051013", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051013.png" }, { "name": "Emote 909051014", "id": "909051014", "image": "https://raw.githubusercontent.com/jamiffsystem/FFAllIcon/main/emoteiconv2/909051014.png" }];
+
+        let emotes = [];
+        let notifications = [];
+        let categories = ['EVO', 'Rare Emote', 'NOT IN BD SERVER', 'HYPER B'];
+
+        let adminIndexEmotes = [];
+        let adminCustomEmotes = [];
+        let indexEmoteOverrides = {};
+        let deletedIndexEmotes = [];
+
+        try {
+            indexEmoteOverrides = JSON.parse(localStorage.getItem('indexEmoteOverrides')) || {};
+        } catch (error) {
+            indexEmoteOverrides = {};
+        }
+
+        try {
+            deletedIndexEmotes = JSON.parse(localStorage.getItem('deletedIndexEmotes')) || [];
+        } catch (error) {
+            deletedIndexEmotes = [];
+        }
+
+        // Load existing data on page load from Firebase
+        window.onload = function () {
+            loadDataFromFirebase();
+        };
+
+        // Load all data from Firebase
+        function loadDataFromFirebase() {
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbOnValue = window.firebaseOnValue;
+            const dbSet = window.firebaseSet;
+
+            // Pre-fetch keys immediately so the list is instant when user opens the section
+            setupKeysListener();
+
+            // Load Social Links with real-time updates
+            dbOnValue(dbRef(db, 'settings/socialLinks'), (snapshot) => {
+                if (snapshot.exists()) {
+                    socialLinks = snapshot.val();
+                } else {
+                    // Set default values if not exists
+                    socialLinks = {
+                        youtube: 'https://www.youtube.com/@MrJamiYT',
+                        discord: 'https://discord.gg/b7XQpYeK2F',
+                        telegram: 'https://t.me/venomexeff',
+                        website: 'https://venomexeshop.netlify.app/',
+                        whatsapp: 'https://api.whatsapp.com/send/?phone=8801949281595&text&type=phone_number&app_absent=0'
+                    };
+                    dbSet(dbRef(db, 'settings/socialLinks'), socialLinks);
+                }
+                loadSocialLinks();
+            });
+
+            // Load Header Settings with real-time updates
+            dbOnValue(dbRef(db, 'settings/headerSettings'), (snapshot) => {
+                if (snapshot.exists()) {
+                    headerSettings = snapshot.val();
+                } else {
+                    // Set default values if not exists
+                    headerSettings = {
+                        logo: 'https://i.ibb.co/zWCYFszJ/Np-logo-abstrac.jpg',
+                        name: 'PRIME-X OFFICIAL',
+                        subtitle: 'PRIME-X OFFICIAL WEBSITE'
+                    };
+                    dbSet(dbRef(db, 'settings/headerSettings'), headerSettings);
+                }
+                loadHeaderSettings();
+            });
+
+            // Load Announcement with real-time updates
+            dbOnValue(dbRef(db, 'settings/announcement'), (snapshot) => {
+                if (snapshot.exists()) {
+                    announcement = snapshot.val();
+                } else {
+                    // Set default value if not exists
+                    announcement = '🎉 স্বাগতম PRIME-X OFFICIAL এ! সর্বশেষ আপডেট এবং টুলস পেতে আমাদের সাথে থাকুন। জয়েন করুন ডিসকর্ড, টেলিগ্রাম এবং ইউটিউব চ্যানেলে! 🎉';
+                    dbSet(dbRef(db, 'settings/announcement'), announcement);
+                }
+                loadAnnouncement();
+            });
+
+            // Load Announcement Settings
+            dbOnValue(dbRef(db, 'settings/announcementSettings'), (snapshot) => {
+                if (snapshot.exists()) {
+                    const settings = snapshot.val();
+                    if (settings.speed) {
+                        document.getElementById('announcement-speed').value = settings.speed;
+                    }
+                    if (settings.textColor) {
+                        const textColorSelect = document.getElementById('announcement-text-color');
+                        if (textColorSelect) {
+                            textColorSelect.value = settings.textColor;
+                        }
+                    }
+                }
+            });
+
+            // Load Notifications with real-time updates
+            dbOnValue(dbRef(db, 'notifications'), (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    notifications = Object.keys(data).map(key => ({ ...data[key], id: key }));
+                } else {
+                    notifications = [];
+                }
+                loadNotifications();
+            });
+
+            // Load Emotes with real-time updates
+            dbOnValue(dbRef(db, 'emotes'), (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    emotes = Object.keys(data).map(key => ({ ...data[key], firebaseId: key }));
+                    adminCustomEmotes = [...emotes];
+                    updateDashboardStats();
+                } else {
+                    emotes = [];
+                    adminCustomEmotes = [];
+                    updateDashboardStats();
+                }
+                // Reload all emotes if we're on the view-all-emotes tab
+                const viewAllTab = document.getElementById('view-all-emotes');
+                if (viewAllTab && viewAllTab.classList.contains('active')) {
+                    renderCombinedEmoteList();
+                }
+            });
+
+            // Load Categories with real-time updates
+            dbOnValue(dbRef(db, 'categories'), (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // Check if data is array or object
+                    if (Array.isArray(data)) {
+                        categories = data;
+                    } else {
+                        categories = Object.values(data);
+                    }
+                } else {
+                    // Set default categories if not exists
+                    categories = ['EVO', 'Rare Emote', 'NOT IN BD SERVER', 'HYPER B'];
+                    dbSet(dbRef(db, 'categories'), categories);
+                }
+                loadCategories();
+                updateCategoryDropdowns();
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        function loadSocialLinks() {
+            document.getElementById('youtube-link').value = socialLinks.youtube;
+            document.getElementById('discord-link').value = socialLinks.discord;
+            document.getElementById('telegram-link').value = socialLinks.telegram;
+            document.getElementById('website-link').value = socialLinks.website;
+            document.getElementById('whatsapp-link').value = socialLinks.whatsapp;
+        }
+
+        function saveSocialLinks() {
+            socialLinks = {
+                youtube: document.getElementById('youtube-link').value,
+                discord: document.getElementById('discord-link').value,
+                telegram: document.getElementById('telegram-link').value,
+                website: document.getElementById('website-link').value,
+                whatsapp: document.getElementById('whatsapp-link').value
+            };
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbSet = window.firebaseSet;
+
+            dbSet(dbRef(db, 'settings/socialLinks'), socialLinks)
+                .then(() => {
+                    showAlert('সোশ্যাল লিংক সফলভাবে সেভ হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('সেভ করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function loadHeaderSettings() {
+            document.getElementById('logo-url').value = headerSettings.logo;
+            document.getElementById('website-name').value = headerSettings.name;
+            document.getElementById('website-subtitle').value = headerSettings.subtitle;
+            document.getElementById('developer-name').value = headerSettings.developerName || 'Developed by PRIME-X OFFICIAL';
+            document.getElementById('developer-name-color').value = headerSettings.developerNameColor || '#38bdf8';
+            document.getElementById('developer-name-speed').value = headerSettings.developerNameSpeed || 25;
+        }
+
+        function saveHeaderSettings() {
+            headerSettings = {
+                logo: document.getElementById('logo-url').value,
+                name: document.getElementById('website-name').value,
+                subtitle: document.getElementById('website-subtitle').value,
+                developerName: document.getElementById('developer-name').value || 'Developed by PRIME-X OFFICIAL',
+                developerNameColor: document.getElementById('developer-name-color').value || '#38bdf8',
+                developerNameSpeed: parseInt(document.getElementById('developer-name-speed').value) || 25
+            };
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbSet = window.firebaseSet;
+
+            dbSet(dbRef(db, 'settings/headerSettings'), headerSettings)
+                .then(() => {
+                    showAlert('হেডার সেটিংস সফলভাবে সেভ হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('সেভ করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function loadAnnouncement() {
+            document.getElementById('announcement-text').value = announcement;
+        }
+
+        function saveAnnouncement() {
+            const announcementText = document.getElementById('announcement-text').value;
+            const announcementSpeed = parseInt(document.getElementById('announcement-speed').value) || 30;
+            const textColorSelect = document.getElementById('announcement-text-color');
+            const textColor = textColorSelect ? textColorSelect.value : '#ffffff';
+
+            announcement = announcementText;
+
+            const announcementSettings = {
+                text: announcementText,
+                speed: announcementSpeed,
+                textColor: textColor
+            };
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbSet = window.firebaseSet;
+
+            dbSet(dbRef(db, 'settings/announcement'), announcementText)
+                .then(() => {
+                    return dbSet(dbRef(db, 'settings/announcementSettings'), announcementSettings);
+                })
+                .then(() => {
+                    showAlert('এনাউন্সমেন্ট সফলভাবে সেভ হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('সেভ করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        // Show/hide specific email input based on target selection
+        document.addEventListener('DOMContentLoaded', () => {
+            const targetSelect = document.getElementById('notification-target');
+            const emailGroup = document.getElementById('specific-email-group');
+
+            if (targetSelect && emailGroup) {
+                targetSelect.addEventListener('change', () => {
+                    if (targetSelect.value === 'specific') {
+                        emailGroup.style.display = 'block';
+                    } else {
+                        emailGroup.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        function sendNotification() {
+            const title = document.getElementById('notification-title').value;
+            const message = document.getElementById('notification-message').value;
+            const type = document.getElementById('notification-type').value;
+            const target = document.getElementById('notification-target').value;
+            const targetEmail = document.getElementById('target-user-email').value;
+
+            if (!title || !message) {
+                showAlert('দয়া করে টাইটেল এবং মেসেজ পূরণ করুন!', 'error');
+                return;
+            }
+
+            if (target === 'specific' && !targetEmail) {
+                showAlert('দয়া করে টার্গেট ইউজারের ইমেইল দিন!', 'error');
+                return;
+            }
+
+            const notification = {
+                title: title,
+                message: message,
+                type: type,
+                target: target,
+                targetEmail: target === 'specific' ? targetEmail : null,
+                timestamp: new Date().toLocaleString('bn-BD'),
+                read: false
+            };
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbPush = window.firebasePush;
+
+            dbPush(dbRef(db, 'notifications'), notification)
+                .then(() => {
+                    document.getElementById('notification-title').value = '';
+                    document.getElementById('notification-message').value = '';
+                    document.getElementById('target-user-email').value = '';
+                    showAlert('নোটিফিকেশন সফলভাবে পাঠানো হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('নোটিফিকেশন পাঠাতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function loadNotifications() {
+            const list = document.getElementById('notification-list');
+            if (!list) return;
+
+            list.innerHTML = '';
+
+            if (notifications.length === 0) {
+                list.innerHTML = '<p style="color: #94a3b8; text-align: center;">কোন নোটিফিকেশন নেই</p>';
+                return;
+            }
+
+            notifications.forEach(notif => {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${notif.title}</strong>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${notif.message}</p>
+                        <p style="font-size: 11px; color: #64748b; margin-top: 4px;">${notif.timestamp || 'N/A'}</p>
+                        <p style="font-size: 11px; color: #64748b; margin-top: 4px;">Type: ${notif.type || 'info'} | Target: ${notif.target || 'all'}</p>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteNotification('${notif.id}')" style="padding: 8px 12px; font-size: 12px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function deleteNotification(notifId) {
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbRemove = window.firebaseRemove;
+
+            dbRemove(dbRef(db, `notifications/${notifId}`))
+                .then(() => {
+                    showAlert('নোটিফিকেশন ডিলিট হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('ডিলিট করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function addEmote() {
+            const name = document.getElementById('emote-name').value;
+            const id = document.getElementById('emote-id').value;
+            const image = document.getElementById('emote-image').value;
+            const category = document.getElementById('emote-category').value;
+
+            if (!name || !id || !image) {
+                showAlert('দয়া করে সব তথ্য পূরণ করুন!', 'error');
+                return;
+            }
+
+            const emote = {
+                id: id,
+                name: name,
+                image: image,
+                category: category
+            };
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbPush = window.firebasePush;
+
+            dbPush(dbRef(db, 'emotes'), emote)
+                .then(() => {
+                    document.getElementById('emote-name').value = '';
+                    document.getElementById('emote-id').value = '';
+                    document.getElementById('emote-image').value = '';
+                    document.getElementById('emote-category').value = '';
+                    showAlert('ইমোট সফলভাবে যোগ হয়েছে!', 'success');
+                    // Reload all emotes if we're on the view-all-emotes tab
+                    const viewAllTab = document.getElementById('view-all-emotes');
+                    if (viewAllTab && viewAllTab.classList.contains('active')) {
+                        setTimeout(() => {
+                            renderCombinedEmoteList();
+                        }, 300);
+                    }
+                })
+                .catch((error) => {
+                    showAlert('ইমোট যোগ করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function loadEmotes() {
+            // This function is no longer needed for manage-emotes tab
+            // Emotes will be shown in view-all-emotes tab
+        }
+
+        function deleteEmote(index) {
+            if (confirm('আপনি কি নিশ্চিত যে এই ইমোট ডিলিট করতে চান?')) {
+                emotes.splice(index, 1);
+                localStorage.setItem('emotes', JSON.stringify(emotes));
+                loadEmotes();
+                showAlert('ইমোট ডিলিট হয়েছে!', 'success');
+            }
+        }
+
+
+
+        function addCategory() {
+            const newCat = document.getElementById('new-category').value.trim();
+            if (!newCat) {
+                showAlert('দয়া করে ক্যাটাগরি নাম লিখুন!', 'error');
+                return;
+            }
+
+            if (categories.includes(newCat)) {
+                showAlert('এই ক্যাটাগরি ইতিমধ্যে আছে!', 'error');
+                return;
+            }
+
+            const updatedCategories = [...categories, newCat];
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbSet = window.firebaseSet;
+
+            dbSet(dbRef(db, 'categories'), updatedCategories)
+                .then(() => {
+                    document.getElementById('new-category').value = '';
+                    showAlert('নতুন ক্যাটাগরি যোগ হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('ক্যাটাগরি যোগ করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function updateCategoryDropdowns() {
+            const emoteCategory = document.getElementById('emote-category');
+            const filterAllCategory = document.getElementById('filter-all-category');
+
+            // Clear existing options (except the first one)
+            emoteCategory.innerHTML = '<option value="">All (কোন ক্যাটাগরি নেই)</option>';
+            if (filterAllCategory) {
+                filterAllCategory.innerHTML = '<option value="">সব ইমোট দেখান</option>';
+            }
+
+            // Add categories
+            categories.forEach(cat => {
+                emoteCategory.innerHTML += `<option value="${cat}">${cat}</option>`;
+                if (filterAllCategory) {
+                    filterAllCategory.innerHTML += `<option value="${cat}">${cat}</option>`;
+                }
+            });
+        }
+
+        function loadCategories() {
+            const list = document.getElementById('category-list');
+            if (!list) return;
+
+            list.innerHTML = '';
+
+            if (categories.length === 0) {
+                list.innerHTML = '<p style="color: #94a3b8; text-align: center; grid-column: 1/-1;">কোন ক্যাটাগরি নেই</p>';
+                return;
+            }
+
+            categories.forEach((cat, index) => {
+                const card = document.createElement('div');
+                card.className = 'emote-card';
+                card.innerHTML = `
+                    <p style="font-weight: 600; margin-bottom: 10px; color: #38bdf8; font-size: 16px;">${cat}</p>
+                    <input type="text" id="edit-cat-${index}" value="${cat}" style="width: 100%; margin-bottom: 8px; padding: 8px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.35); background: rgba(15, 23, 42, 0.75); color: #f1f5f9; font-size: 13px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-success" onclick="editCategory(${index})" style="flex: 1; padding: 8px; font-size: 12px;">
+                            <i class="fas fa-save"></i> সেভ
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteCategory(${index})" style="flex: 1; padding: 8px; font-size: 12px;">
+                            <i class="fas fa-trash"></i> ডিলিট
+                        </button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function editCategory(index) {
+            const newName = document.getElementById(`edit-cat-${index}`).value.trim();
+
+            if (!newName) {
+                showAlert('ক্যাটাগরি নাম খালি রাখা যাবে না!', 'error');
+                return;
+            }
+
+            const exists = categories.some((cat, i) => cat === newName && i !== index);
+            if (exists) {
+                showAlert('এই নামের ক্যাটাগরি ইতিমধ্যে আছে!', 'error');
+                return;
+            }
+
+            const oldName = categories[index];
+            const updatedCategories = [...categories];
+            updatedCategories[index] = newName;
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbSet = window.firebaseSet;
+            const dbUpdate = window.firebaseUpdate;
+
+            // Update categories
+            dbSet(dbRef(db, 'categories'), updatedCategories)
+                .then(() => {
+                    // Update emotes with this category
+                    const updates = {};
+                    emotes.forEach(emote => {
+                        if (emote.category === oldName && emote.firebaseId) {
+                            updates[`emotes/${emote.firebaseId}/category`] = newName;
+                        }
+                    });
+                    return dbUpdate(dbRef(db), updates);
+                })
+                .then(() => {
+                    showAlert('ক্যাটাগরি আপডেট হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('আপডেট করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function deleteCategory(index) {
+            const catName = categories[index];
+
+            if (confirm(`আপনি কি নিশ্চিত যে "${catName}" ক্যাটাগরি ডিলিট করতে চান? এই ক্যাটাগরির সমস্ত ইমোট ডিলিট হয়ে যাবে!`)) {
+                const updatedCategories = categories.filter((_, i) => i !== index);
+                const db = window.firebaseDB;
+                const dbRef = window.firebaseRef;
+                const dbSet = window.firebaseSet;
+                const dbRemove = window.firebaseRemove;
+
+                // Delete category
+                dbSet(dbRef(db, 'categories'), updatedCategories)
+                    .then(() => {
+                        // Delete emotes with this category
+                        const deletePromises = emotes
+                            .filter(emote => emote.category === catName && emote.firebaseId)
+                            .map(emote => dbRemove(dbRef(db, `emotes/${emote.firebaseId}`)));
+
+                        return Promise.all(deletePromises);
+                    })
+                    .then(() => {
+                        showAlert('ক্যাটাগরি এবং এর সমস্ত ইমোট ডিলিট হয়েছে!', 'success');
+                    })
+                    .catch((error) => {
+                        showAlert('ডিলিট করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                    });
+            }
+        }
+
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Load all emotes when switching to view-all-emotes tab
+            if (tabName === 'view-all-emotes') {
+                loadAllEmotesFromIndex();
+            }
+        }
+
+        // Load all emotes from index.html and custom emotes
+        async function loadAllEmotesFromIndex() {
+            const listEl = document.getElementById('admin-emote-list');
+            if (!listEl) return;
+
+            listEl.innerHTML = '<p style="color: #94a3b8; text-align: center; grid-column: 1/-1; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> ইমোট লোড হচ্ছে...</p>';
+
+            const indexUrl = new URL('index.html', window.location.href).href;
+
+            try {
+                const response = await fetch(indexUrl, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                if (doc.querySelector('parsererror')) {
+                    throw new Error('HTML parsing failed');
+                }
+                renderEmotesFromDocument(doc);
+            } catch (error) {
+                console.error('Error loading emotes:', error);
+                if (window.location.protocol === 'file:') {
+                    try {
+                        await loadEmotesFromIframe(indexUrl);
+                        return;
+                    } catch (iframeError) {
+                        console.error('Iframe load error:', iframeError);
+                    }
+                }
+                renderEmotesFromDocument(null);
+            }
+        }
+
+        function renderEmotesFromDocument(doc) {
+            let indexData = [];
+
+            if (doc) {
+                const emoteItems = doc.querySelectorAll('.emote-item');
+                emoteItems.forEach(item => {
+                    const img = item.querySelector('img');
+                    const nameEl = item.querySelector('.emote-name');
+                    const idEl = item.querySelector('.emote-id');
+                    const sendButton = item.querySelector('.send-button');
+
+                    const emoteId = (sendButton?.getAttribute('data-emote-id') || idEl?.textContent || '').replace('ID:', '').trim();
+                    const emoteName = nameEl?.textContent?.trim() || emoteId;
+                    const emoteImage = (img?.getAttribute('data-src') || img?.getAttribute('src') || '').trim();
+
+                    if (!emoteId) {
+                        return;
+                    }
+
+                    indexData.push({
+                        id: emoteId,
+                        name: emoteName,
+                        image: emoteImage,
+                        category: getCategoryForEmote(emoteId)
+                    });
+                });
+            }
+
+            if ((!doc || indexData.length === 0) && Array.isArray(fallbackIndexEmotes) && fallbackIndexEmotes.length > 0) {
+                indexData = fallbackIndexEmotes.map(emote => ({
+                    ...emote,
+                    category: emote.category || getCategoryForEmote(emote.id)
+                }));
+            }
+
+            if (!Array.isArray(indexData)) {
+                indexData = [];
+            }
+
+            if (!Array.isArray(deletedIndexEmotes)) {
+                deletedIndexEmotes = [];
+            }
+
+            adminIndexEmotes = indexData
+                .filter(emote => emote && emote.id && !deletedIndexEmotes.includes(emote.id))
+                .map(emote => ({
+                    ...emote,
+                    image: indexEmoteOverrides[emote.id] || emote.image || ''
+                }));
+
+            renderCombinedEmoteList();
+        }
+
+        function renderCombinedEmoteList() {
+            const listEl = document.getElementById('admin-emote-list');
+            if (!listEl) return;
+
+            const searchInput = document.getElementById('admin-emote-search');
+            const categorySelect = document.getElementById('filter-all-category');
+
+            const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            const selectedCategory = categorySelect ? categorySelect.value : '';
+
+            const combined = [
+                ...adminIndexEmotes.map(emote => ({ ...emote, source: 'index' })),
+                ...adminCustomEmotes.map(emote => ({ ...emote, source: 'custom' }))
+            ];
+
+            const filtered = combined.filter(emote => {
+                const matchesCategory = !selectedCategory || (emote.category || '') === selectedCategory;
+                const matchesSearch = !searchTerm ||
+                    emote.name?.toLowerCase().includes(searchTerm) ||
+                    emote.id?.toLowerCase().includes(searchTerm);
+                return matchesCategory && matchesSearch;
+            });
+
+            listEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                const emptyState = document.createElement('p');
+                emptyState.style.color = '#94a3b8';
+                emptyState.style.textAlign = 'center';
+                emptyState.style.gridColumn = '1 / -1';
+                emptyState.style.padding = '24px 0';
+                emptyState.textContent = 'কোন ইমোট পাওয়া যায়নি';
+                listEl.appendChild(emptyState);
+                return;
+            }
+
+            filtered.forEach(emote => {
+                listEl.appendChild(buildAdminEmoteCard(emote));
+            });
+        }
+
+        function buildAdminEmoteCard(emote) {
+            const card = document.createElement('div');
+            card.className = 'emote-item';
+            card.setAttribute('data-category', emote.category || '');
+            card.setAttribute('data-emote-id', emote.id);
+            card.setAttribute('data-source', emote.source);
+
+            const actions = document.createElement('div');
+            actions.className = 'admin-emote-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'admin-emote-action-btn edit';
+            editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+            editBtn.title = 'ইমেজ আপডেট করুন';
+            editBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (emote.source === 'index') {
+                    promptUpdateIndexEmoteImage(emote.id);
+                } else {
+                    promptUpdateCustomEmoteImage(emote.firebaseId, emote.id);
+                }
+            });
+            actions.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'admin-emote-action-btn delete';
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteBtn.title = 'ডিলিট করুন';
+            deleteBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (emote.source === 'index') {
+                    deleteIndexEmote(emote.id);
+                } else {
+                    deleteCustomEmoteById(emote.firebaseId);
+                }
+            });
+            actions.appendChild(deleteBtn);
+
+            card.appendChild(actions);
+
+            const img = document.createElement('img');
+            img.alt = emote.name;
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            if (emote.source === 'index') {
+                img.src = indexEmoteOverrides[emote.id] || emote.image || '';
+            } else {
+                img.src = emote.image || '';
+            }
+            img.onerror = function () {
+                this.src = 'https://via.placeholder.com/100?text=Error';
+            };
+            card.appendChild(img);
+
+            const details = document.createElement('div');
+            details.className = 'emote-details';
+
+            const nameEl = document.createElement('p');
+            nameEl.className = 'emote-name';
+            nameEl.textContent = emote.name || 'Unnamed';
+            details.appendChild(nameEl);
+
+            const idEl = document.createElement('p');
+            idEl.className = 'emote-id';
+            idEl.textContent = `ID: ${emote.id || '-'}`;
+            details.appendChild(idEl);
+
+            if (emote.category) {
+                const categoryEl = document.createElement('p');
+                categoryEl.className = 'emote-category-tag';
+                categoryEl.textContent = emote.category;
+                details.appendChild(categoryEl);
+            }
+
+            card.appendChild(details);
+
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.className = 'send-button';
+            copyBtn.textContent = 'Copy ID';
+            copyBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                copyEmoteIdToClipboard(emote.id);
+            });
+            card.appendChild(copyBtn);
+
+            return card;
+        }
+
+        function filterAllEmotes() {
+            renderCombinedEmoteList();
+        }
+
+        function copyEmoteIdToClipboard(emoteId) {
+            if (!emoteId) {
+                showAlert('ইমোট ID পাওয়া যায়নি!', 'error');
+                return;
+            }
+
+            const handleSuccess = () => showAlert(`Emote ID (${emoteId}) কপি হয়েছে!`, 'success');
+            const handleFailure = () => showAlert('কপি করতে সমস্যা হয়েছে!', 'error');
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(emoteId).then(handleSuccess).catch(() => {
+                    legacyCopy();
+                });
+            } else {
+                legacyCopy();
+            }
+
+            function legacyCopy() {
+                const textarea = document.createElement('textarea');
+                textarea.value = emoteId;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    successful ? handleSuccess() : handleFailure();
+                } catch (error) {
+                    handleFailure();
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function promptUpdateIndexEmoteImage(emoteId) {
+            const emote = adminIndexEmotes.find(item => item.id === emoteId);
+            if (!emote) {
+                showAlert('ইমোট পাওয়া যায়নি!', 'error');
+                return;
+            }
+
+            const currentUrl = indexEmoteOverrides[emoteId] || emote.image || '';
+            const newUrl = prompt('নতুন ইমেজ URL লিখুন:', currentUrl);
+            if (newUrl === null) {
+                return;
+            }
+
+            const trimmedUrl = newUrl.trim();
+            if (!trimmedUrl) {
+                showAlert('ইমেজ URL খালি রাখা যাবে না!', 'error');
+                return;
+            }
+
+            indexEmoteOverrides[emoteId] = trimmedUrl;
+            localStorage.setItem('indexEmoteOverrides', JSON.stringify(indexEmoteOverrides));
+            showAlert('ইমোট ইমেজ আপডেট হয়েছে! (শুধুমাত্র প্রদর্শনের জন্য)', 'success');
+
+            adminIndexEmotes = adminIndexEmotes.map(item => item.id === emoteId ? { ...item, image: trimmedUrl } : item);
+            renderCombinedEmoteList();
+        }
+
+        function promptUpdateCustomEmoteImage(firebaseId, emoteId) {
+            const target = adminCustomEmotes.find(item => (item.firebaseId || '') === (firebaseId || '') || item.id === emoteId);
+            if (!target || !target.firebaseId) {
+                showAlert('ইমোট পাওয়া যায়নি!', 'error');
+                return;
+            }
+
+            const currentUrl = target.image || '';
+            const newUrl = prompt('নতুন ইমেজ URL লিখুন:', currentUrl);
+            if (newUrl === null) {
+                return;
+            }
+
+            const trimmedUrl = newUrl.trim();
+            if (!trimmedUrl) {
+                showAlert('ইমেজ URL খালি রাখা যাবে না!', 'error');
+                return;
+            }
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbUpdate = window.firebaseUpdate;
+
+            dbUpdate(dbRef(db, `emotes/${target.firebaseId}`), { image: trimmedUrl })
+                .then(() => {
+                    showAlert('ইমোট ইমেজ আপডেট হয়েছে!', 'success');
+                    adminCustomEmotes = adminCustomEmotes.map(item => item.firebaseId === target.firebaseId ? { ...item, image: trimmedUrl } : item);
+                    renderCombinedEmoteList();
+                })
+                .catch((error) => {
+                    showAlert('আপডেট করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        function deleteCustomEmoteById(firebaseId) {
+            if (!firebaseId) {
+                showAlert('ইমোট পাওয়া যায়নি!', 'error');
+                return;
+            }
+
+            if (!confirm('আপনি কি নিশ্চিত যে এই ইমোট ডিলিট করতে চান?')) {
+                return;
+            }
+
+            const db = window.firebaseDB;
+            const dbRef = window.firebaseRef;
+            const dbRemove = window.firebaseRemove;
+
+            dbRemove(dbRef(db, `emotes/${firebaseId}`))
+                .then(() => {
+                    showAlert('ইমোট ডিলিট হয়েছে!', 'success');
+                })
+                .catch((error) => {
+                    showAlert('ডিলিট করতে সমস্যা হয়েছে: ' + error.message, 'error');
+                });
+        }
+
+        async function loadEmotesFromIframe(indexUrl) {
+            await new Promise((resolve, reject) => {
+                let iframe = document.getElementById('index-loader-iframe');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'index-loader-iframe';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+                }
+
+                iframe.onload = () => {
+                    try {
+                        const doc = iframe.contentDocument || iframe.contentWindow.document;
+                        renderEmotesFromDocument(doc);
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+
+                iframe.onerror = () => reject(new Error('Unable to load index.html via iframe'));
+                const cacheBustedUrl = indexUrl.includes('?') ? `${indexUrl}&cacheBust=${Date.now()}` : `${indexUrl}?cacheBust=${Date.now()}`;
+                iframe.src = cacheBustedUrl;
+            });
+        }
+
+        // Get category for emote based on ID
+        function getCategoryForEmote(emoteId) {
+            const categoryMap = {
+                'EVO': ['909000098', '909000063', '909000090', '909000081', '909000075', '909035007', '909000068', '909049010', '909040010', '909045001', '909038012', '909042008', '909039011', '909041005', '909035012', '909037011', '909033001', '909038010', '909000085', '909051003'],
+                'Rare Emote': ['909045002', '909045003', '909040013', '909041008', '909041012', '909041013', '909050011', '909042007', '909000074', '909000012', '909033005', '909034008'],
+                'NOT IN BD SERVER': ['909050009', '909039013', '909041014', '909042017', '909043009', '909044008', '909045007', '909046001', '909046006', '909047012', '909048018', '909049001', '909049002', '909049009', '909049012', '909049016', '909049020', '909050008', '909050014', '909050015', '909050016'],
+                'HYPER B': ['909042003', '909044005', '909048002', '909037010']
+            };
+
+            for (const [category, ids] of Object.entries(categoryMap)) {
+                if (ids.includes(emoteId)) {
+                    return category;
+                }
+            }
+
+            return '';
+        }
+
+        // Filter all emotes by category
+        // Delete custom emote (legacy signature - index based)
+        function deleteCustomEmote(index) {
+            if (!emotes || !Array.isArray(emotes) || index >= emotes.length) {
+                showAlert('ইমোট পাওয়া যায়নি!', 'error');
+                return;
+            }
+            deleteCustomEmoteById(emotes[index]?.firebaseId);
+        }
+
+        // Update custom emote image (legacy signature)
+        function updateCustomEmoteImage(uniqueId, customIndex) {
+            if (!emotes || !Array.isArray(emotes) || customIndex >= emotes.length) {
+                showAlert('ইমোট পাওয়া যায়নি!', 'error');
+                return;
+            }
+            const target = emotes[customIndex];
+            promptUpdateCustomEmoteImage(target?.firebaseId, target?.id);
+        }
+
+        // Update index emote image (legacy signature)
+        function updateEmoteImage(uniqueId, emoteId) {
+            promptUpdateIndexEmoteImage(emoteId);
+        }
+
+        // Delete emote from index.html (this will only hide it from display)
+        function deleteIndexEmote(emoteId) {
+            const emote = adminIndexEmotes.find(item => item.id === emoteId);
+            const emoteName = emote?.name || 'এই ইমোট';
+
+            if (!confirm(`আপনি কি নিশ্চিত যে "${emoteName}" (ID: ${emoteId}) ইমোট ডিলিট করতে চান?\n\nসতর্কতা: এটি শুধুমাত্র প্রদর্শন থেকে লুকিয়ে রাখবে। index.html ফাইল থেকে স্থায়ীভাবে ডিলিট করতে ফাইল এডিট করুন।`)) {
+                return;
+            }
+
+            if (!Array.isArray(deletedIndexEmotes)) {
+                deletedIndexEmotes = [];
+            }
+
+            if (!deletedIndexEmotes.includes(emoteId)) {
+                deletedIndexEmotes.push(emoteId);
+                localStorage.setItem('deletedIndexEmotes', JSON.stringify(deletedIndexEmotes));
+            }
+
+            adminIndexEmotes = adminIndexEmotes.filter(item => item.id !== emoteId);
+            showAlert('ইমোট প্রদর্শন থেকে সরানো হয়েছে!', 'success');
+            renderCombinedEmoteList();
+        }
+
+        // Note: We only manage users created through this admin panel
+        // No Firebase sync is needed - all users are stored in localStorage
+
+        // User Management functions removed as per request to use only Key/HID system.
+    </script>
+
+
+    <script>
+        // ===== KEY MANAGEMENT FUNCTIONS =====
+        function toggleCustomDate(val) {
+            document.getElementById('custom-date-container').style.display = val === 'custom' ? 'block' : 'none';
+        }
+
+        // Generate a random key in PRIME-XXXX-XXXX-XXXX format
+        function generateRandomKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const part = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+            const key = `PRIME-${part(4)}-${part(4)}-${part(4)}`;
+            document.getElementById('generated-key-display').value = key;
+            return key;
+        }
+
+        let editingKeyId = null;
+
+        // Save or Update key in Firebase
+        async function saveNewKey() {
+            const email = document.getElementById('key-user-email').value.trim();
+            const plan = document.getElementById('key-plan').value;
+            const duration = document.getElementById('key-expiry-duration').value;
+            const hwid = document.getElementById('key-hwid').value.trim();
+            let key = document.getElementById('generated-key-display').value.trim();
+
+            if (!key) { key = generateRandomKey(); }
+
+            const db = window.firebaseDB;
+            const push = window.firebasePush;
+            const update = window.firebaseUpdate;
+            const ref = window.firebaseRef;
+            const keyRef = ref(db, 'keys');
+
+            let expiryMs = 0;
+            let customExpiresAt = null;
+
+            if (duration === '1h') expiryMs = 1 * 3600000;
+            else if (duration === '24h') expiryMs = 24 * 3600000;
+            else if (duration === '3d') expiryMs = 3 * 86400000;
+            else if (duration === '5d') expiryMs = 5 * 86400000;
+            else if (duration === '7d') expiryMs = 7 * 86400000;
+            else if (duration === '30d') expiryMs = 30 * 86400000;
+            else if (duration === 'custom') {
+                const customDate = document.getElementById('key-custom-date').value;
+                if (!customDate) { alert('মেয়াদ শেষ হওয়ার তারিখ সিলেক্ট করুন!'); return; }
+                customExpiresAt = new Date(customDate).getTime() + (23 * 3600000 + 59 * 60000 + 59 * 1000); // End of the day
+            }
+
+            const keyData = {
+                key: key,
+                email: email || '',
+                plan: plan,
+                isActive: true,
+                expiresAt: customExpiresAt || (expiryMs > 0 ? Date.now() + expiryMs : null),
+                hwid: hwid || null
+            };
+
+            try {
+                if (editingKeyId) {
+                    // Update existing
+                    await update(ref(db, `keys/${editingKeyId}`), keyData);
+                    showAlert('✅ Key সফলভাবে আপডেট করা হয়েছে!', 'success');
+                    cancelEdit();
+                } else {
+                    // Create new
+                    keyData.createdAt = Date.now();
+                    keyData.loginCount = 0;
+                    keyData.lastLogin = null;
+                    await push(keyRef, keyData);
+                    showAlert('✅ Key সফলভাবে তৈরি হয়েছে! Key: ' + key, 'success');
+                    clearKeyForm();
+                }
+                loadKeyList();
+            } catch (err) {
+                showAlert('Error: ' + err.message, 'error');
+            }
+        }
+
+        // Function to fill form for editing
+        window.editKey = function (keyId, keyDataJson) {
+            const keyData = JSON.parse(decodeURIComponent(keyDataJson));
+            editingKeyId = keyId;
+
+            document.getElementById('key-user-email').value = keyData.email || '';
+            document.getElementById('key-plan').value = keyData.plan || 'Free';
+            document.getElementById('generated-key-display').value = keyData.key || '';
+            document.getElementById('key-hwid').value = keyData.hwid || '';
+
+            // Handle duration/expiry
+            document.getElementById('key-expiry-duration').value = '0'; // Default to lifetime or reset
+            document.getElementById('custom-date-container').style.display = 'none';
+
+            // Update UI for editing
+            const saveBtn = document.getElementById('save-key-btn');
+            saveBtn.innerHTML = '<i class="fas fa-edit"></i> Key আপডেট করুন';
+            saveBtn.className = 'btn btn-warning';
+
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+            document.getElementById('key-management-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.cancelEdit = function () {
+            editingKeyId = null;
+            clearKeyForm();
+            const saveBtn = document.getElementById('save-key-btn');
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Key সেভ করুন ও Firebase-এ যোগ করুন';
+            saveBtn.className = 'btn btn-success';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+        };
+
+        function clearKeyForm() {
+            document.getElementById('key-user-email').value = '';
+            document.getElementById('key-plan').value = 'Free';
+            document.getElementById('key-expiry-duration').value = '0';
+            document.getElementById('custom-date-container').style.display = 'none';
+            document.getElementById('key-custom-date').value = '';
+            document.getElementById('generated-key-display').value = '';
+            document.getElementById('key-hwid').value = '';
+            generateRandomKey();
+        }
+
+        // ---- Key List Cache & Global Listener ----
+        let _keysCache = null;          // in-memory cache
+        let _keysListenerSet = false;   // guard: only register listener once
+
+        function setupKeysListener() {
+            if (_keysListenerSet) return;   // already listening
+            _keysListenerSet = true;
+
+            const db = window.firebaseDB;
+            const onValue = window.firebaseOnValue;
+            const ref = window.firebaseRef;
+
+            onValue(ref(db, 'keys'), (snapshot) => {
+                // Update cache
+                _keysCache = snapshot.exists() ? snapshot.val() : null;
+                // Re-render wherever visible
+                renderKeyList();
+                // Update dashboard stats
+                updateDashboardStats();
+            });
+        }
+
+        function renderKeyList(filterQuery = '') {
+            const container = document.getElementById('key-list-container');
+            if (!container) return;
+
+            if (!_keysCache) {
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.4); text-align:center; padding: 30px;">কোনো Key পাওয়া যায়নি। নতুন Key তৈরি করুন।</p>';
+                return;
+            }
+
+            const keys = _keysCache;
+            let html = '';
+
+            // Sort keys by createdAt descending (Newest first)
+            const entries = Object.entries(keys);
+
+            // Apply filter if provided
+            const query = filterQuery.toLowerCase().trim();
+            const filteredEntries = query ? entries.filter(([id, data]) => {
+                const email = (data.email || '').toLowerCase();
+                const key = (data.key || '').toLowerCase();
+                return email.includes(query) || key.includes(query);
+            }) : entries;
+
+            if (filteredEntries.length === 0) {
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.4); text-align:center; padding: 30px;">আপনার সার্চের সাথে কোনো তথ্য মেলেনি।</p>';
+                return;
+            }
+
+            const sortedKeys = filteredEntries.sort((a, b) => {
+                return (b[1].createdAt || 0) - (a[1].createdAt || 0);
+            });
+
+            sortedKeys.forEach(([keyId, keyData]) => {
+                const isExpired = keyData.expiresAt && Date.now() > keyData.expiresAt;
+                const statusColor = !keyData.isActive ? '#ef4444' : isExpired ? '#f59e0b' : '#22c55e';
+                const statusText = !keyData.isActive ? 'নিষ্ক্রিয়' : isExpired ? 'মেয়াদ শেষ' : 'সক্রিয়';
+                const expiryText = keyData.expiresAt
+                    ? new Date(keyData.expiresAt).toLocaleDateString('bn-BD')
+                    : 'নেই';
+                const lastLoginText = keyData.lastLogin
+                    ? new Date(keyData.lastLogin).toLocaleString('bn-BD', { hour: '2-digit', minute: '2-digit' })
+                    : 'কখনো না';
+                const hwidText = keyData.hwid ? keyData.hwid.substring(0, 16) + '...' : 'নেই';
+
+                html += `
+                <div style="background: rgba(15,23,42,0.4); border: 1px solid rgba(148,163,184,0.1); border-radius: 12px; padding: 15px; margin-bottom: 12px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-envelope" style="color: #38bdf8; font-size: 14px;"></i>
+                            <span style="font-size: 13px; font-weight: 700; color: #fff; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${keyData.email || 'No Email'}
+                            </span>
+                            <span style="background: rgba(56,189,248,0.1); color: #38bdf8; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800;">${keyData.plan}</span>
+                        </div>
+                        <span style="padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; background: ${statusColor}15; color: ${statusColor}; border: 1px solid ${statusColor}30; text-transform: uppercase;">
+                            ${statusText}
+                        </span>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                        <code style="font-family: 'JetBrains Mono', monospace; color: #38bdf8; font-size: 13px; letter-spacing: 1px; flex: 1; font-weight: 600;">${keyData.key}</code>
+                        <button onclick="navigator.clipboard.writeText('${keyData.key}').then(() => showAlert('Key কপি হয়েছে!', 'success'))"
+                            style="background: transparent; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 14px; transition: 0.3s;" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 5px 10px; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 12px; padding: 0 5px;">
+                        <span><i class="fas fa-calendar-alt" style="margin-right: 5px;"></i> ${expiryText}</span>
+                        <span title="${lastLoginText}"><i class="fas fa-clock" style="margin-right: 5px;"></i> ${lastLoginText}</span>
+                        <span style="grid-column: 1 / -1;"><i class="fas fa-fingerprint" style="margin-right: 5px;"></i> ${hwidText}</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <button onclick="editKey('${keyId}', '${encodeURIComponent(JSON.stringify(keyData))}')"
+                            style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fbbf24; padding: 7px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="toggleKeyStatus('${keyId}', ${keyData.isActive})"
+                            style="background: ${keyData.isActive ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'}; border: 1px solid ${keyData.isActive ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}; color: ${keyData.isActive ? '#f87171' : '#4ade80'}; padding: 7px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;" title="${keyData.isActive ? 'Disable' : 'Enable'}">
+                            <i class="fas fa-${keyData.isActive ? 'lock-open' : 'lock'}"></i>
+                        </button>
+                        <button onclick="resetKeyHWID('${keyId}')"
+                            style="background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.2); color: #38bdf8; padding: 7px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;" title="Reset HWID">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button onclick="deleteKey('${keyId}', '${keyData.key}')"
+                            style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #f87171; padding: 7px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html || `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-dim);">No licenses found in the database.</div>`;
+        }
+
+        // loadKeyList: instant if cached, starts listener if not
+        function loadKeyList() {
+            const container = document.getElementById('key-list-container');
+            if (!container) return;
+
+            if (_keysCache !== null) {
+                // Instant render from cache — no loading delay
+                renderKeyList();
+            } else {
+                // Show skeleton while first load happens
+                container.innerHTML = `
+                <div style="text-align:center; padding: 40px; color: var(--text-dim);">
+                    <div style="width:36px; height:36px; border:3px solid rgba(14,165,233,0.2); border-top-color: #0ea5e9; border-radius:50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px;"></div>
+                    <span style="font-size:13px;">Loading keys...</span>
+                </div>`;
+            }
+            // Ensure the global listener is active
+            if (window.firebaseDB) {
+                setupKeysListener();
+            }
+        }
+
+        // Search/Filter function
+        window.filterDashboardKeys = function () {
+            const searchInput = document.getElementById('dashboard-search-input');
+            if (searchInput) {
+                renderKeyList(searchInput.value);
+            }
+        };
+
+        // Toggle key active/inactive
+        async function toggleKeyStatus(keyId, currentStatus) {
+            const db = window.firebaseDB;
+            const update = window.firebaseUpdate;
+            const ref = window.firebaseRef;
+            try {
+                await update(ref(db, `keys/${keyId}`), { isActive: !currentStatus });
+                showAlert(currentStatus ? 'Key নিষ্ক্রিয় করা হয়েছে।' : 'Key সক্রিয় করা হয়েছে।', 'success');
+            } catch (err) {
+                showAlert('Error: ' + err.message, 'error');
+            }
+        }
+
+        // Delete a key
+        async function deleteKey(keyId, keyValue) {
+            if (!confirm(`আপনি কি নিশ্চিত যে "${keyValue}" key মুছতে চান?`)) return;
+            const db = window.firebaseDB;
+            const remove = window.firebaseRemove;
+            const ref = window.firebaseRef;
+            try {
+                await remove(ref(db, `keys/${keyId}`));
+                showAlert('Key মুছে ফেলা হয়েছে।', 'success');
+            } catch (err) {
+                showAlert('Error: ' + err.message, 'error');
+            }
+        }
+
+        // Reset HID for a key
+        async function resetKeyHWID(keyId) {
+            if (!confirm('আপনি কি নিশ্চিত যে এই Key-এর Device ID রিসেট করতে চান?')) return;
+            const db = window.firebaseDB;
+            const update = window.firebaseUpdate;
+            const ref = window.firebaseRef;
+            try {
+                await update(ref(db, `keys/${keyId}`), { hwid: null });
+                showAlert('Device ID সফলভাবে রিসেট করা হয়েছে।', 'success');
+            } catch (err) {
+                showAlert('Error: ' + err.message, 'error');
+            }
+        }
+
+        // Auto-generate a key on page load for convenience
+        document.addEventListener('DOMContentLoaded', () => {
+            generateRandomKey();
+        });
+
+        // Multi-section visibility control
+        window.showSection = function (sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(sec => sec.style.display = 'none');
+
+            // Show requested
+            const targetSection = document.getElementById(sectionName + '-section');
+            if (targetSection) targetSection.style.display = 'block';
+
+            // Update Page Header
+            const titleEl = document.getElementById('current-section-title');
+            const descEl = document.getElementById('current-section-desc');
+
+            // Format title
+            const formattedTitle = sectionName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            titleEl.textContent = formattedTitle;
+
+            // Set description based on section
+            const descs = {
+                'key-management': 'Manage your access keys and license durations',
+                'emote-management': 'Control available emotes and player interactions',
+                'announcement': 'Send global messages to all active users',
+                'social-links': 'Update your YouTube, Discord and other links',
+                'header-settings': 'Customize your website header and branding',
+                'notifications': 'Manage system alerts and push notifications',
+                'category-management': 'Organize emotes into tactical categories'
+            };
+            descEl.textContent = descs[sectionName] || 'Overview and settings';
+
+            // Update Sidebar Active State
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('onclick').includes(`'${sectionName}'`)) {
+                    link.classList.add('active');
+                }
+            });
+
+            // Specific logic
+            if (sectionName === 'key-management') loadKeyList();
+            if (sectionName === 'emote-management') loadAllEmotesFromIndex();
+
+            // Animate section entry
+            targetSection.style.display = 'block';
+            targetSection.style.animation = 'none';
+            targetSection.offsetHeight; // trigger reflow
+            targetSection.style.animation = 'fadeIn 0.4s ease forwards';
+        };
+
+        // Update counts in dashboard widgets
+        function updateDashboardStats() {
+            const db = window.firebaseDB;
+            const ref = window.firebaseRef;
+            const onValue = window.firebaseOnValue;
+            if (!db || !ref || !onValue) return;
+
+            // Keys Count
+            onValue(ref(db, 'keys'), (snapshot) => {
+                const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                const el = document.getElementById('stat-total-keys');
+                if (el) {
+                    el.textContent = count;
+                    el.classList.add('pulse-text');
+                    setTimeout(() => el.classList.remove('pulse-text'), 1000);
+                }
+            });
+
+            // Emotes Count
+            // Combine firebase emotes and parsed index emotes
+            const firebaseEmotesCount = adminCustomEmotes ? adminCustomEmotes.length : 0;
+            const indexEmotesCount = adminIndexEmotes ? adminIndexEmotes.length : 0;
+            const total = firebaseEmotesCount + indexEmotesCount;
+            const el = document.getElementById('stat-total-emotes');
+            if (el) {
+                el.textContent = total;
+                el.classList.add('pulse-text');
+                setTimeout(() => el.classList.remove('pulse-text'), 1000);
+            }
+        }
+
+        // Run stats update on load
+        document.addEventListener('DOMContentLoaded', updateDashboardStats);
+
+        // Initialize Unique "PRIME-X Digital DNA"
+        if (typeof particlesJS !== 'undefined') {
+            particlesJS('admin-particles-js', {
+                "particles": {
+                    "number": { "value": 60, "density": { "enable": true, "value_area": 800 } },
+                    "color": { "value": "#38bdf8" },
+                    "shape": {
+                        "type": "char",
+                        "character": {
+                            "value": ["P", "X", "1", "0"],
+                            "font": "Monospace", "style": "", "weight": "800"
+                        }
+                    },
+                    "opacity": {
+                        "value": 0.25, "random": true,
+                        "anim": { "enable": true, "speed": 1, "opacity_min": 0.05, "sync": false }
+                    },
+                    "size": {
+                        "value": 14, "random": true,
+                        "anim": { "enable": true, "speed": 2, "size_min": 8, "sync": false }
+                    },
+                    "line_linked": { "enable": false },
+                    "move": {
+                        "enable": true, "speed": 1.5, "direction": "none", "random": true, "straight": false, "out_mode": "out", "bounce": false
+                    }
+                },
+                "interactivity": {
+                    "detect_on": "window",
+                    "events": { "onhover": { "enable": true, "mode": "bubble" }, "onclick": { "enable": true, "mode": "push" }, "resize": true },
+                    "modes": {
+                        "bubble": { "distance": 150, "size": 25, "duration": 0.4, "opacity": 0.8 },
+                        "push": { "particles_nb": 4 }
+                    }
+                },
+                "retina_detect": true
+            });
+        }
+
+        // Sidebar Toggle Logic for Mobile
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('admin-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggle = document.getElementById('mobile-nav-toggle');
+
+            if (toggle && sidebar && overlay) {
+                const toggleSidebar = () => {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                    const icon = toggle.querySelector('i');
+                    if (sidebar.classList.contains('active')) {
+                        icon.classList.replace('fa-bars', 'fa-times');
+                    } else {
+                        icon.classList.replace('fa-times', 'fa-bars');
+                    }
+                };
+
+                toggle.addEventListener('click', toggleSidebar);
+                overlay.addEventListener('click', toggleSidebar);
+
+                // Close sidebar when clicking a nav link on mobile
+                const navLinks = document.querySelectorAll('.nav-link');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (window.innerWidth <= 1024 && sidebar.classList.contains('active')) {
+                            toggleSidebar();
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

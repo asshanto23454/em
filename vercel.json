@@ -1,0 +1,60 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/bd/fastemote",
+      "destination": "http://2.56.246.81:30093/fastemote"
+    },
+    {
+      "source": "/api/bd/join",
+      "destination": "http://2.56.246.81:30093/join"
+    },
+    {
+      "source": "/api/india/fastemote",
+      "destination": "http:///fastemote"
+    },
+    {
+      "source": "/api/india/join",
+      "destination": "http:///join"
+    },
+    {
+      "source": "/api/pakistan/fastemote",
+      "destination": "http:///fastemote"
+    },
+    {
+      "source": "/api/pakistan/join",
+      "destination": "http:///join"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/admin.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

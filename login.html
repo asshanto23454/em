@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Custom System</title>
+    <!-- Use Montserrat or Poppins to match the clean bold typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+
+    <div class="login-wrapper">
+        <div class="login-container">
+            <!-- Decorative Blue Circles -->
+            <div class="shape shape-large-top"></div>
+            <div class="shape shape-bottom-left"></div>
+            <div class="shape shape-sphere-mid"></div>
+            <div class="shape shape-sphere-bottom-right"></div>
+
+            <!-- Left Side Data -->
+            <div class="login-left">
+                <div class="welcome-block">
+                    <h1>WELCOME</h1>
+                    <h3>YOUR HEADLINE NAME</h3>
+                    <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt
+                        ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci
+                        tation.</p>
+                </div>
+            </div>
+
+            <!-- Right Side Login Form -->
+            <div class="login-right">
+                <div class="form-container">
+                    <h2 class="title">Sign in</h2>
+                    <p class="subtitle">Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
+
+                    <form class="form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" placeholder="User Name">
+                        </div>
+
+                        <div class="input-group">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" placeholder="Password" id="password">
+                            <span class="show-text" id="togglePassword">SHOW</span>
+                        </div>
+
+                        <div class="form-actions">
+                            <label class="remember-me">
+                                <input type="checkbox">
+                                <span class="checkmark"></span>
+                                Remember me
+                            </label>
+                            <a href="#" class="forgot-link">Forgot Password?</a>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Sign in</button>
+
+                        <div class="divider">
+                            <span>or</span>
+                        </div>
+
+                        <button type="button" class="btn btn-outline">Sign in with other</button>
+
+                        <p class="signup-text">
+                            Don't have an account? <a href="#">Sign up</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script to toggle password visibility -->
+    <script>
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+
+        togglePassword.addEventListener('click', function (e) {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            // toggle text
+            this.textContent = type === 'password' ? 'SHOW' : 'HIDE';
+        });
+    </script>
+</body>
+
+</html>
