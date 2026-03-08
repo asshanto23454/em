@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/bd/fastemote",
-      "destination": "http://2.56.246.81:30093/fastemote"
+      "destination": "http://46.247.108.191:30081/fastemote"
     },
     {
       "source": "/api/bd/join",
-      "destination": "http://2.56.246.81:30093/join"
+      "destination": "http://46.247.108.191:30081/join"
     },
     {
       "source": "/api/india/fastemote",
@@ -57,4 +57,5 @@
       ]
     }
   ]
+
 }
