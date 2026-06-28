@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/bd/fastemote",
-      "destination": "http://194.62.248.55:30092/fastemote"
+      "destination": "http://in.venomcommunity.com:25573/fastemote"
     },
     {
       "source": "/api/bd/join",
-      "destination": "http://194.62.248.55:30092/join"
+      "destination": "http://in.venomcommunity.com:25573/join"
     },
     {
       "source": "/api/india/fastemote",
